@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design Your Cultist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  SETTINGS — the only part you need to edit
+// ═══════════════════════════════════════════════════════════════
+const SETTINGS = {
+  STREAMER: 'LERION',
+  // Google Form: make it, then ⋮ → "Get pre-filled link", type "x" in each answer, copy the link and paste it here.
+  // Everything else is worked out from that link.
+  FORM_PREFILL_LINK: '',
+  // Which question is which, in the order they appear in the form:
+  FORM_ORDER: ['twitch', 'character', 'notes', 'patreon'],
+};
+</script>
+<style>
+:root{
+  --bg:#120b1a; --panel:#1d1329; --panel2:#271a37; --line:#3a2950; --text:#efe6ff; --muted:#a898c2;
+  --accent:#f0b840; --accent2:#b06cff; --good:#3fd28a; --evil:#ff5a5a; --neutral:#f0b840;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:radial-gradient(ellipse at top,#2a1640 0%,var(--bg) 60%) fixed,var(--bg);color:var(--text);
+  font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+h1,h2,.px{font-family:Silkscreen,monospace;font-weight:400;letter-spacing:.02em}
+h1{font-size:clamp(1.5rem,5vw,2.4rem);margin:0;color:var(--accent);text-shadow:0 0 18px rgba(240,184,64,.35)}
+h2{font-size:.95rem;margin:0 0 10px;color:var(--accent2)}
+header{max-width:1100px;margin:0 auto;padding:28px 16px 8px}
+header p{margin:6px 0 0;color:var(--muted);max-width:640px}
+main{max-width:1100px;margin:0 auto;padding:12px 16px 60px;display:grid;grid-template-columns:340px 1fr;gap:22px;align-items:start}
+@media (max-width:820px){ main{grid-template-columns:1fr} }
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.stage{position:sticky;top:12px;display:flex;flex-direction:column;align-items:center;gap:12px}
+@media (max-width:820px){
+  .stage{top:0;z-index:5;margin:0 -16px;padding:8px 16px;background:linear-gradient(var(--bg) 85%,transparent)}
+  .stage .card{flex-direction:row!important;justify-content:center;padding:10px}
+  .stage .view{max-width:104px}
+  .stage .note{display:none}
+  .stage .btns{flex-direction:column}
+}
+.view{width:100%;aspect-ratio:4/5;max-width:300px;border-radius:12px;background:#0c0712;border:1px solid var(--line);display:grid;place-items:center;overflow:hidden;position:relative}
+.view canvas{width:100%;height:100%;image-rendering:pixelated}
+.note{font-size:.8rem;color:var(--muted);text-align:center;margin:0}
+.btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+button{font:inherit;cursor:pointer}
+.btn{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 14px}
+.btn:hover{border-color:var(--accent2)}
+.btn.primary{background:var(--accent);color:#1a1020;border-color:var(--accent);font-weight:700}
+.btn.primary:hover{filter:brightness(1.08)}
+.group{margin-bottom:18px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:.9rem}
+.chip[aria-pressed="true"]{background:var(--accent2);border-color:var(--accent2);color:#fff}
+.swatches{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+.sw{width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,.15);padding:0}
+.sw[aria-pressed="true"]{outline:3px solid var(--accent);outline-offset:2px}
+.custom{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted)}
+input[type=color]{width:34px;height:30px;border:none;background:none;padding:0;cursor:pointer}
+label.f{display:block;font-size:.85rem;color:var(--muted);margin:12px 0 4px}
+input[type=text],textarea{width:100%;background:#0f0916;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit}
+textarea{min-height:90px;resize:vertical}
+input:focus,textarea:focus{outline:2px solid var(--accent2);border-color:transparent}
+.sub{font-size:.75rem;color:var(--muted);margin-left:4px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:520px){ .row2{grid-template-columns:1fr} }
+.done{display:none;margin-top:14px;padding:14px;border-radius:12px;background:var(--panel2);border:1px solid var(--line)}
+.done.show{display:block}
+pre{white-space:pre-wrap;word-break:break-word;background:#0f0916;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:.82rem;margin:8px 0}
+.err{color:var(--evil);font-size:.85rem;min-height:1.2em;margin:8px 0 0}
+.maker{display:none}
+body.is-maker .maker{display:block}
+body.is-maker .viewer-only{display:none}
+.tag{display:inline-block;font-size:.7rem;padding:2px 8px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Design your cultist</h1>
+  <p class="viewer-only">Subs and Patreon members get their own little cultist on <span id="streamerName"></span>'s stream. It walks out when you chat. Build it here as close as you can, add any notes, and send it in. The real sprite gets hand-made from your design.</p>
+  <p class="maker">Maker mode: paste a request from the form responses to get the preview, the reference picture and the Grok prompts.</p>
+</header>
+
+<main>
+  <section class="stage">
+    <div class="card" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:12px">
+      <div class="view"><canvas id="cv" width="32" height="40"></canvas></div>
+      <p class="note">Rough preview. Your real cultist will be drawn properly in the stream's pixel art style.</p>
+      <div class="btns">
+        <button class="btn" id="rand">🎲 Randomise</button>
+        <button class="btn" id="dl">⬇️ Save picture</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="card maker" style="margin-bottom:18px">
+      <h2>Paste a request</h2>
+      <textarea id="mkIn" placeholder="Paste the 'Character' answer (with the CODE line) here"></textarea>
+      <label class="f">Their notes</label>
+      <textarea id="mkNotes" placeholder="Paste their notes (optional)"></textarea>
+      <p class="err" id="mkErr"></p>
+      <h2 style="margin-top:14px">1 · Walk strip prompt</h2>
+      <p class="note" style="text-align:left">Paste into your Grok chat (with the reference picture attached). Save as <b>media/followers/&lt;twitchname&gt;.png</b></p>
+      <pre id="mkWalk"></pre><button class="btn" data-copy="mkWalk">📋 Copy</button>
+      <h2 style="margin-top:14px">2 · Wave strip prompt (optional)</h2>
+      <p class="note" style="text-align:left">Save as <b>media/followers/&lt;twitchname&gt;-cheer.png</b></p>
+      <pre id="mkCheer"></pre><button class="btn" data-copy="mkCheer">📋 Copy</button>
+    </div>
+
+    <div class="card" id="parts"></div>
+
+    <div class="card viewer-only" style="margin-top:18px">
+      <h2>Send it in</h2>
+      <div class="row2">
+        <div><label class="f" for="twitch">Twitch username <span class="sub">required</span></label><input type="text" id="twitch" autocomplete="off" maxlength="25" placeholder="yourname"></div>
+        <div><label class="f" for="patreon">Patreon name <span class="sub">if you're a member</span></label><input type="text" id="patreon" autocomplete="off" maxlength="60"></div>
+      </div>
+      <label class="f" for="notes">Anything the preview can't show? <span class="sub">pets, tattoos, "make them hold a coffee", a reference to your PFP…</span></label>
+      <textarea id="notes" maxlength="600"></textarea>
+      <p class="err" id="err"></p>
+      <div class="btns" style="justify-content:flex-start"><button class="btn primary" id="send">🕯️ Send my cultist</button></div>
+      <div class="done" id="done"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  OPTIONS
+// ═══════════════════════════════════════════════════════════════
+const SKIN=['#ffe3c9','#f4c69d','#dfa878','#c68642','#8d5524','#5c3a1e','#3a2416','#9fd68f','#a9c7ff','#c9a6ff','#cfcfcf'];
+const HAIRC=['#1b1b1f','#4a2d1a','#8a5a2b','#e8c66a','#c8552a','#f2f2f2','#9c9c9c','#ff7ac8','#4f8dff','#3fcf73','#9b5cff','#d42c2c'];
+const CLOTH=['#4b2a7b','#7a1f2b','#1f3b73','#1f5b3a','#2b2b33','#f2f2f2','#c98a1b','#d65aa8','#2fa5b8','#8b5a2b','#5a5f6e','#e05b2b'];
+const ACC=['#f1c40f','#d0d4dc','#ff5a5a','#3fd28a','#58a6ff','#b06cff','#ff8ad8','#ffffff','#1b1b1f','#ff9a2b'];
+
+const PARTS=[
+  { id:'build',   title:'Body',      opts:[['slim','Slim'],['regular','Regular'],['chunky','Chunky']] },
+  { id:'skin',    title:'Skin',      colors:SKIN, colorOnly:true },
+  { id:'hair',    title:'Hair',      opts:[['short','Short'],['spiky','Spiky'],['long','Long'],['bun','Bun'],['ponytail','Ponytail'],['curly','Curly'],['mohawk','Mohawk'],['bald','Bald']], color:'hairColor', colors:HAIRC },
+  { id:'outfit',  title:'Outfit',    opts:[['robe','Cult robe'],['hoodie','Hoodie'],['tee','T-shirt & jeans'],['suit','Suit'],['dress','Dress'],['armour','Armour']], color:'outfitColor', colors:CLOTH },
+  { id:'head',    title:'On the head', opts:[['none','Nothing'],['hood','Hood'],['cap','Cap'],['beanie','Beanie'],['crown','Crown'],['witch','Witch hat'],['horns','Horns'],['halo','Halo'],['catears','Cat ears']] },
+  { id:'extra',   title:'Extra',     opts:[['none','Nothing'],['glasses','Glasses'],['candle','Candle'],['book','Spell book'],['staff','Staff'],['coffee','Coffee'],['headphones','Headphones'],['scarf','Scarf'],['bat','Pet bat']] },
+  { id:'accent',  title:'Accent colour', note:'trim, hats, extras, glowing eyes', colors:ACC, colorOnly:true },
+  { id:'eyes',    title:'Eyes',      opts:[['normal','Normal'],['happy','Happy'],['sleepy','Sleepy'],['glow','Glowing']] },
+  { id:'align',   title:'Your cultist leans…', opts:[['good','😇 Good'],['neutral','⚖️ Neutral'],['evil','😈 Evil']] },
+];
+const DEFAULT={ build:'regular', skin:'#dfa878', hair:'short', hairColor:'#4a2d1a', outfit:'robe', outfitColor:'#4b2a7b', head:'none', extra:'candle', accent:'#f1c40f', eyes:'normal', align:'neutral' };
+let C={...DEFAULT};
+
+// ═══════════════════════════════════════════════════════════════
+//  PIXEL DOLL (32×40 grid)
+// ═══════════════════════════════════════════════════════════════
+function hexToRgb(h){ h=h.replace('#',''); return [0,2,4].map(i=>parseInt(h.substr(i,2),16)); }
+function shade(h,a){ const [r,g,b]=hexToRgb(h), f=v=>Math.max(0,Math.min(255,Math.round(a<0?v*(1+a):v+(255-v)*a))); return `rgb(${f(r)},${f(g)},${f(b)})`; }
+function drawDoll(ctx,c,frame,bg){
+  ctx.clearRect(0,0,32,40);
+  if(bg){ ctx.fillStyle=bg; ctx.fillRect(0,0,32,40); }
+  else {
+    const aura={good:'63,210,138',neutral:'240,184,64',evil:'255,90,90'}[c.align];
+    const g=ctx.createRadialGradient(16,22,2,16,22,20); g.addColorStop(0,`rgba(${aura},.28)`); g.addColorStop(1,`rgba(${aura},0)`);
+    ctx.fillStyle=g; ctx.fillRect(0,0,32,40);
+  }
+  const P=(x,y,w,h,col)=>{ ctx.fillStyle=col; ctx.fillRect(x,y,w,h); };
+  const dy=(frame%2)?-1:0, Q=(x,y,w,h,col)=>P(x,y+dy,w,h,col);
+  const bw={slim:-1,regular:0,chunky:1}[c.build];
+  const skin=c.skin, skinD=shade(skin,-.18), mouth=shade(skin,-.5);
+  const h=c.hairColor, hd=shade(h,-.3), o=c.outfitColor, od=shade(o,-.3), a=c.accent, ad=shade(a,-.25);
+  const T0=11-bw, TW=10+bw*2;                       // torso left + width
+  const liftL=frame===1?1:0, liftR=frame===3?1:0;
+
+  if(!bg) P(9,38,14,1,'rgba(0,0,0,.35)');
+  // pet bat (behind)
+  if(c.extra==='bat'){ const by=7+(frame%2); P(26,by,3,2,'#3b2b4f'); P(26,by-1,1,1,'#3b2b4f'); P(28,by-1,1,1,'#3b2b4f');
+    if(frame%2){ P(23,by,3,1,'#3b2b4f'); P(29,by,3,1,'#3b2b4f'); } else { P(24,by-1,2,1,'#3b2b4f'); P(29,by-1,2,1,'#3b2b4f'); }
+    P(26,by,1,1,'#ff5a5a'); P(28,by,1,1,'#ff5a5a'); }
+  // staff (behind arm)
+  if(c.extra==='staff'){ Q(6,13,1,25,'#7a4a24'); Q(5,10,3,3,a); Q(6,9,1,1,shade(a,.4)); }
+
+  // legs + shoes
+  const legs={ hoodie:'#353a52', tee:'#3b5b8c', suit:od, armour:'#6b7280', robe:od, dress:skin }[c.outfit];
+  if(c.outfit!=='robe'){
+    const lw=c.outfit==='dress'?2:3, lx1=c.outfit==='dress'?13:12, lx2=c.outfit==='dress'?17:17;
+    P(lx1,31-liftL,lw,5,legs); P(lx2,31-liftR,lw,5,legs);
+    P(11,36-liftL,4,2,'#2a2230'); P(17,36-liftR,4,2,'#2a2230');
+  } else { P(11,37-liftL,4,1,'#2a2230'); P(17,37-liftR,4,1,'#2a2230'); }
+
+  // hood back
+  if(c.head==='hood'){ Q(7,5,18,17,o); Q(8,4,16,1,o); }
+
+  // torso, arms, hands
+  let arm=o;
+  if(c.outfit==='armour'){ Q(T0,21,TW,10,'#9aa3ad'); Q(13,23,6,6,o); Q(14,24,4,1,shade(o,.3)); arm='#7d858f'; }
+  else Q(T0,21,TW,10,o);
+  if(c.outfit==='dress' ) arm=skin;
+  Q(T0-2,22,2,7,arm); Q(T0+TW,22,2,7,arm);
+  if(c.outfit==='tee'){ Q(T0-2,25,2,4,skin); Q(T0+TW,25,2,4,skin); }
+  if(c.outfit==='dress'){ Q(T0-2,21,2,2,o); Q(T0+TW,21,2,2,o); }
+  Q(T0-2,29,2,2,skin); Q(T0+TW,29,2,2,skin);
+  // outfit details
+  if(c.outfit==='robe'){ Q(T0-3,22,3,7,o); Q(T0+TW,22,3,7,o); Q(T0-2,29,2,2,skin); Q(T0+TW+1,29,2,2,skin);
+    P(10-bw,31,12+bw*2,6,o); P(10-bw,36,12+bw*2,1,a); Q(15,21,2,10,a); P(15,31,2,5,a); Q(T0,21,TW,1,od); }
+  if(c.outfit==='hoodie'){ Q(13,26,6,3,od); Q(14,21,1,3,a); Q(17,21,1,3,a); }
+  if(c.outfit==='tee'){ Q(15,24,2,2,a); }
+  if(c.outfit==='suit'){ Q(14,21,4,4,'#f2f2f2'); Q(15,22,2,6,a); Q(T0,30,TW,1,od); }
+  if(c.outfit==='dress'){ P(10-bw,29+dy,12+bw*2,5,o); P(10-bw,33+dy,12+bw*2,1,a); Q(T0,21,TW,1,a); }
+  if(c.outfit==='armour'){ Q(T0-3,21,4,3,a); Q(T0+TW-1,21,4,3,a); Q(T0,30,TW,1,'#5f6670'); }
+  if(c.extra==='scarf'){ Q(10,20,12,3,a); Q(18,23,3,5,a); Q(18,27,3,1,ad); }
+
+  // head
+  Q(10,7,12,14,skin); Q(9,8,14,12,skin); Q(10,20,12,1,skinD);
+  // eyes
+  const E=[12,18];
+  if(c.eyes==='normal') E.forEach(x=>{ Q(x,14,2,2,'#1a1220'); Q(x,14,1,1,'#ffffff'); });
+  if(c.eyes==='happy')  E.forEach(x=>{ Q(x,14,2,1,'#1a1220'); Q(x-1,15,1,1,'#1a1220'); Q(x+2,15,1,1,'#1a1220'); });
+  if(c.eyes==='sleepy') E.forEach(x=>Q(x,15,2,1,'#1a1220'));
+  if(c.eyes==='glow')   E.forEach(x=>{ Q(x-1,13,4,4,shade(a,0).replace('rgb','rgba').replace(')',',.35)')); Q(x,14,2,2,a); Q(x,14,1,1,'#fff'); });
+  Q(15,18,2,1,mouth);
+  if(c.eyes==='happy'){ Q(14,17,1,1,mouth); Q(17,17,1,1,mouth); }
+
+  // hair
+  const hood=c.head==='hood';
+  if(!hood){
+    const top=()=>{ Q(9,6,14,4,h); Q(10,5,12,1,h); Q(9,10,2,3,h); Q(21,10,2,3,h); Q(11,10,6,1,h); Q(10,6,12,1,shade(h,.15)); };
+    switch(c.hair){
+      case 'short': top(); break;
+      case 'spiky': top(); for(let i=0;i<7;i++){ Q(9+i*2,3+(i%2),1,2,h); Q(10+i*2,4,1,1,h); } break;
+      case 'long':  top(); Q(7,9,3,15,h); Q(22,9,3,15,h); Q(9,10,1,13,hd); Q(22,10,1,13,hd); break;
+      case 'bun':   top(); Q(13,2,6,4,h); Q(14,1,4,1,h); Q(13,5,6,1,hd); break;
+      case 'ponytail': top(); Q(22,8,3,3,h); Q(24,10,2,10,h); Q(24,10,1,10,hd); break;
+      case 'curly': Q(8,5,16,6,h); for(let i=0;i<6;i++) Q(8+i*3,4,2,1,h); Q(7,8,3,9,h); Q(22,8,3,9,h);
+                    for(let i=0;i<6;i++) Q(9+i*3,7+(i%2),1,1,hd); Q(11,11,4,1,h); break;
+      case 'mohawk': Q(14,1,4,9,h); Q(14,1,4,1,shade(h,.2)); Q(9,9,2,3,hd); Q(21,9,2,3,hd); break;
+      case 'bald': Q(12,8,3,1,shade(skin,.35)); break;
+    }
+  } else if(c.hair!=='bald'){ Q(10,8,12,2,h); }
+
+  // headwear
+  switch(c.head){
+    case 'hood': Q(8,5,16,2,o); Q(8,7,1,14,o); Q(23,7,1,14,o); Q(9,7,14,1,od); break;
+    case 'cap': Q(9,4,14,4,a); Q(8,8,16,1,ad); Q(15,4,2,1,shade(a,.3)); break;
+    case 'beanie': Q(9,3,14,5,a); Q(8,7,16,2,ad); Q(15,1,2,2,shade(a,.4)); break;
+    case 'crown': Q(10,4,12,3,'#f1c40f'); [10,13,15,18,21].forEach(x=>Q(x,2,1,2,'#f1c40f')); Q(15,1,2,1,'#f1c40f'); Q(12,5,1,1,'#d42c2c'); Q(19,5,1,1,'#2f7bff'); Q(15,5,2,1,'#3fd28a'); break;
+    case 'witch': Q(5,6,22,2,'#2a2238'); Q(10,2,12,4,'#2a2238'); Q(12,0,8,2,'#2a2238'); Q(16,-1,4,1,'#2a2238'); Q(10,5,12,1,a); break;
+    case 'horns': Q(8,4,2,3,'#ece3cf'); Q(7,2,2,2,'#ece3cf'); Q(6,1,1,1,'#3a3030'); Q(22,4,2,3,'#ece3cf'); Q(23,2,2,2,'#ece3cf'); Q(25,1,1,1,'#3a3030'); break;
+    case 'halo': { const hy=(frame%2)?0:1; P(11,hy,10,1,'#ffe066'); P(10,hy+1,1,1,'#ffe066'); P(21,hy+1,1,1,'#ffe066'); P(11,hy+2,10,1,'#ffe066'); break; }
+    case 'catears': Q(9,3,4,4,h); Q(19,3,4,4,h); Q(10,4,2,2,'#ff9ccf'); Q(20,4,2,2,'#ff9ccf'); Q(9,2,1,1,h); Q(22,2,1,1,h); break;
+  }
+
+  // extras in front
+  const box=(x,y,w,h2,col)=>{ Q(x,y,w,1,col); Q(x,y+h2-1,w,1,col); Q(x,y,1,h2,col); Q(x+w-1,y,1,h2,col); };
+  switch(c.extra){
+    case 'glasses': box(11,13,4,4,'#1a1220'); box(17,13,4,4,'#1a1220'); Q(15,14,2,1,'#1a1220'); break;
+    case 'candle': Q(T0-3,25,2,5,'#f5efdc'); Q(T0-3,23,2,2,frame%2?'#ffcf3a':'#ff9a1f'); Q(T0-3,22,1,1,'#fff3b0'); break;
+    case 'book': Q(T0+TW+1,26,5,5,a); Q(T0+TW+2,27,3,3,'#f5efdc'); Q(T0+TW+1,26,1,5,ad); break;
+    case 'coffee': Q(T0+TW+1,27,4,4,'#f2f2f2'); Q(T0+TW+1,27,4,1,'#5a3418'); Q(T0+TW+5,28,1,2,'#f2f2f2'); Q(T0+TW+2,25-(frame%2),1,1,'rgba(255,255,255,.5)'); break;
+    case 'headphones': Q(8,6,16,1,'#2a2a30'); Q(7,7,1,5,'#2a2a30'); Q(24,7,1,5,'#2a2a30'); Q(7,12,3,5,a); Q(22,12,3,5,a); break;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DESCRIPTION, CODE AND PROMPTS
+// ═══════════════════════════════════════════════════════════════
+const NAMED=[['black','#111111'],['charcoal','#2b2b33'],['dark grey','#5a5f6e'],['grey','#9c9c9c'],['silver','#d0d4dc'],['white','#f6f6f6'],
+  ['dark brown','#4a2d1a'],['brown','#8a5a2b'],['tan','#c68642'],['beige','#dfa878'],['peach','#f4c69d'],['pale','#ffe3c9'],['deep brown','#3a2416'],
+  ['blonde','#e8c66a'],['gold','#f1c40f'],['orange','#ff9a2b'],['ginger','#c8552a'],['red','#d42c2c'],['crimson','#7a1f2b'],['pink','#ff7ac8'],['hot pink','#d65aa8'],
+  ['purple','#9b5cff'],['deep purple','#4b2a7b'],['lavender','#c9a6ff'],['navy','#1f3b73'],['blue','#4f8dff'],['sky blue','#a9c7ff'],['teal','#2fa5b8'],
+  ['green','#3fcf73'],['forest green','#1f5b3a'],['mint green','#9fd68f']];
+function colorName(hex){
+  const [r,g,b]=hexToRgb(hex); let best='', bd=1e9;
+  for(const [n,h] of NAMED){ const [R,G,B]=hexToRgb(h), d=(r-R)**2*.3+(g-G)**2*.59+(b-B)**2*.11; if(d<bd){bd=d;best=n;} }
+  return best;
+}
+const cn=h=>`${colorName(h)} (${h})`;
+const label=(id,v)=>{ const p=PARTS.find(p=>p.id===id); const o=p&&p.opts&&p.opts.find(o=>o[0]===v); return o?o[1]:v; };
+function describe(c){
+  const outfit={ robe:`a hooded-style cult robe in ${cn(c.outfitColor)} with ${cn(c.accent)} trim`, hoodie:`a ${cn(c.outfitColor)} hoodie with ${colorName(c.accent)} drawstrings`,
+    tee:`a ${cn(c.outfitColor)} T-shirt with a small ${colorName(c.accent)} logo and blue jeans`, suit:`a ${cn(c.outfitColor)} suit with a white shirt and ${cn(c.accent)} tie`,
+    dress:`a ${cn(c.outfitColor)} dress with ${cn(c.accent)} trim`, armour:`steel armour with a ${cn(c.outfitColor)} chest plate and ${colorName(c.accent)} shoulder pads` }[c.outfit];
+  const hair = c.hair==='bald' ? 'bald' : `${label('hair',c.hair).toLowerCase()} ${colorName(c.hairColor)} hair (${c.hairColor})`;
+  const head={ none:'', hood:'hood up', cap:`a ${colorName(c.accent)} cap`, beanie:`a ${colorName(c.accent)} beanie`, crown:'a small gold crown', witch:`a dark witch hat with a ${colorName(c.accent)} band`,
+    horns:'little ivory devil horns', halo:'a floating golden halo', catears:'cat ears' }[c.head];
+  const extra={ none:'', glasses:'wearing glasses', candle:'holding a lit candle', book:`holding a ${colorName(c.accent)} spell book`, staff:`holding a wooden staff with a ${colorName(c.accent)} orb`,
+    coffee:'holding a mug of coffee', headphones:`wearing ${colorName(c.accent)} headphones`, scarf:`a ${colorName(c.accent)} scarf`, bat:'a tiny pet bat flapping beside them' }[c.extra];
+  const eyes={ normal:'', happy:'happy closed-eye smile', sleepy:'sleepy half-closed eyes', glow:`glowing ${colorName(c.accent)} eyes` }[c.eyes];
+  const lean={ good:'leans good: friendly, wholesome look', neutral:'leans neutral: calm, mysterious look', evil:'leans evil: mischievous, slightly sinister look' }[c.align];
+  return [`${c.build} build`, `${cn(c.skin)} skin`, hair, `wearing ${outfit}`, head, extra, eyes, lean].filter(Boolean).join(', ');
+}
+const KEYS=['build','skin','hair','hairColor','outfit','outfitColor','head','extra','accent','eyes','align'];
+const encode=c=>'CULT1:'+KEYS.map(k=>c[k]).join('/');
+function decode(text){
+  const m=String(text).match(/CULT1:([#\w/]+)/); if(!m) return null;
+  const v=m[1].split('/'); if(v.length!==KEYS.length) return null;
+  const c={}; KEYS.forEach((k,i)=>c[k]=v[i]);
+  for(const p of PARTS){ if(p.opts && !p.opts.some(o=>o[0]===c[p.id])) return null; }
+  if(![c.skin,c.hairColor,c.outfitColor,c.accent].every(h=>/^#[0-9a-f]{6}$/i.test(h))) return null;
+  return c;
+}
+const requestText=c=>`${describe(c)}\nCODE: ${encode(c)}`;
+function walkPrompt(c,notes){
+  return `Pixel art sprite strip of one small chibi cultist character, in exactly the same pixel art style, proportions and outline as our cult mascot sprites. 4 frames side by side in ONE horizontal row, every frame the same square size, showing a side-view walk cycle facing RIGHT. The character must look identical in all 4 frames; only the arms and legs move. Flat pure green background (#00FF00) everywhere: no ground, no shadow, no text, no border, nothing touching the frame edges. Use the attached picture only as a guide for colours and outfit.
+
+Character: ${describe(c)}.${notes&&notes.trim()?`\nExtra requests from the viewer: ${notes.trim()}`:''}`;
+}
+const CHEER_PROMPT=`Now the same character, identical design, style and size, on the same flat pure green background (#00FF00): 4 frames side by side in ONE horizontal row, every frame the same square size, showing a happy wave / cheer animation, turned slightly toward the camera with one arm waving. No ground, no shadow, no text, no border.`;
+
+// ═══════════════════════════════════════════════════════════════
+//  UI
+// ═══════════════════════════════════════════════════════════════
+const $=id=>document.getElementById(id);
+const isMaker=/[?&]maker\b/.test(location.search);
+if(isMaker) document.body.classList.add('is-maker');
+$('streamerName').textContent=SETTINGS.STREAMER;
+
+function renderParts(){
+  $('parts').innerHTML=PARTS.map(p=>{
+    let h=`<div class="group"><h2>${p.title}${p.note?` <span class="sub">(${p.note})</span>`:''}</h2>`;
+    if(p.opts) h+=`<div class="chips">${p.opts.map(([v,l])=>`<button class="chip" data-part="${p.id}" data-v="${v}" aria-pressed="${C[p.id]===v}">${l}</button>`).join('')}</div>`;
+    if(p.colors){
+      const key=p.colorOnly?p.id:p.color;
+      if(!(p.id==='hair' && C.hair==='bald'))
+        h+=`<div class="swatches">${p.colors.map(col=>`<button class="sw" style="background:${col}" title="${colorName(col)}" data-color="${key}" data-v="${col}" aria-pressed="${C[key]===col}"></button>`).join('')}
+            <label class="custom">custom <input type="color" data-colorpick="${key}" value="${C[key]}"></label></div>`;
+    }
+    return h+'</div>';
+  }).join('');
+}
+$('parts').addEventListener('click',e=>{
+  const b=e.target.closest('[data-part],[data-color]'); if(!b) return;
+  if(b.dataset.part) C[b.dataset.part]=b.dataset.v; else C[b.dataset.color]=b.dataset.v;
+  renderParts(); updateMaker();
+});
+$('parts').addEventListener('input',e=>{
+  const k=e.target.dataset.colorpick; if(!k) return; C[k]=e.target.value;
+  document.querySelectorAll(`[data-color="${k}"]`).forEach(s=>s.setAttribute('aria-pressed',String(s.dataset.v===C[k]))); updateMaker();
+});
+$('rand').addEventListener('click',()=>{
+  const r=a=>a[Math.floor(Math.random()*a.length)];
+  for(const p of PARTS){ if(p.opts) C[p.id]=r(p.opts)[0]; if(p.colors) C[p.colorOnly?p.id:p.color]=r(p.colors); }
+  if(Math.random()<.4) C.head='none'; if(Math.random()<.3) C.extra='none';
+  renderParts(); updateMaker();
+});
+
+// preview loop
+const ctx=$('cv').getContext('2d'); let frame=0;
+setInterval(()=>{ frame=(frame+1)%4; drawDoll(ctx,C,frame); },260);
+drawDoll(ctx,C,0);
+
+// save picture (big, on green, ready to attach to Grok)
+$('dl').addEventListener('click',()=>{
+  const S=12, c=document.createElement('canvas'); c.width=32*S; c.height=40*S;
+  const small=document.createElement('canvas'); small.width=32; small.height=40;
+  drawDoll(small.getContext('2d'),C,0,'#00ff00');
+  const x=c.getContext('2d'); x.imageSmoothingEnabled=false; x.drawImage(small,0,0,c.width,c.height);
+  const a=document.createElement('a'); const name=(isMaker?($('mkIn').dataset.twitch||'cultist'):($('twitch').value.trim()||'my-cultist')).toLowerCase().replace(/[^a-z0-9_-]/g,'');
+  a.download=`${name||'cultist'}-reference.png`; a.href=c.toDataURL('image/png'); a.click();
+});
+
+// ── send (viewer) ──
+function formUrl(values){
+  const link=SETTINGS.FORM_PREFILL_LINK.trim(); if(!link) return '';
+  let u; try{ u=new URL(link); }catch(e){ return ''; }
+  const entries=[...u.searchParams.keys()].filter(k=>/^entry\.\d+$/.test(k));
+  const out=new URL(u.origin+u.pathname); out.searchParams.set('usp','pp_url');
+  SETTINGS.FORM_ORDER.forEach((field,i)=>{ if(entries[i] && values[field]!=null) out.searchParams.set(entries[i],values[field]); });
+  return out.toString();
+}
+$('send').addEventListener('click',()=>{
+  const twitch=$('twitch').value.trim().replace(/^@/,'');
+  if(!/^[A-Za-z0-9_]{3,25}$/.test(twitch)){ $('err').textContent='Please put your Twitch username (letters, numbers and _ only).'; $('twitch').focus(); return; }
+  $('err').textContent='';
+  const values={ twitch, character:requestText(C), notes:$('notes').value.trim(), patreon:$('patreon').value.trim() };
+  const url=formUrl(values), done=$('done');
+  if(url){
+    window.open(url,'_blank','noopener');
+    done.innerHTML=`<p class="px" style="margin:0 0 6px;color:var(--accent)">Almost there!</p>
+      <p style="margin:0">A form opened in a new tab with everything filled in. Press <b>Submit</b> there to send it. Nothing opened? <a href="${url.replace(/"/g,'&quot;')}" target="_blank" rel="noopener" style="color:var(--accent)">Open the form</a>.</p>`;
+  } else {
+    const txt=`Twitch: ${twitch}\nPatreon: ${values.patreon||'-'}\nCharacter: ${values.character}\nNotes: ${values.notes||'-'}`;
+    done.innerHTML=`<p class="px" style="margin:0 0 6px;color:var(--accent)">Your request</p>
+      <p style="margin:0">The order form isn't set up yet. Copy this and send it to ${SETTINGS.STREAMER}:</p><pre id="reqTxt"></pre><button class="btn" data-copy="reqTxt">📋 Copy</button>`;
+    $('reqTxt').textContent=txt;
+  }
+  done.classList.add('show');
+});
+
+// ── maker ──
+function updateMaker(){
+  if(!isMaker) return;
+  $('mkWalk').textContent=walkPrompt(C,$('mkNotes').value);
+  $('mkCheer').textContent=CHEER_PROMPT;
+}
+if(isMaker){
+  const load=()=>{
+    const v=$('mkIn').value; if(!v.trim()){ $('mkErr').textContent=''; return updateMaker(); }
+    const c=decode(v);
+    if(!c){ $('mkErr').textContent="Couldn't find a valid CODE: line in that text."; return; }
+    $('mkErr').textContent=''; C=c; renderParts(); updateMaker();
+  };
+  $('mkIn').addEventListener('input',load); $('mkNotes').addEventListener('input',updateMaker);
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-copy]'); if(!b) return;
+  const t=$(b.dataset.copy).textContent;
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{ b.textContent='✅ Copied'; setTimeout(()=>b.textContent='📋 Copy',1500); })
+    .catch(()=>{ const r=document.createRange(); r.selectNodeContents($(b.dataset.copy)); const s=getSelection(); s.removeAllRanges(); s.addRange(r); });
+});
+
+renderParts(); updateMaker();
+</script>
+</body>
+</html>
